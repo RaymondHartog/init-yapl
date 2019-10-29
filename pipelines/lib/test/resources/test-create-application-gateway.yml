@@ -1,0 +1,59 @@
+trigger: none # will disable CI builds entirely
+
+stages:
+- stage: Build_Resource_Artifacts
+  displayName: 'Build'
+  jobs:
+  - job: Build_Resources
+    displayName: 'Build Resource Artifact'
+    
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - template: ../../build/steps/core-artifacts.yml
+      parameters:
+        uploadFolder: '$(System.DefaultWorkingDirectory)/pipeline/lib/deploy/resources'
+        artifactName: 'resourceScripts'
+        mode: 'upload'
+
+- stage: Test_deploy_dev
+  displayName: 'Test Deploy Development'
+  variables:
+  - template: ../../../variables/global.yml
+  - template: ../../../variables/microsites/stage-deploy-dev.yml
+  - group: 'stage-deploy-dev-secrets'
+  jobs:
+  - deployment: Test_Deploy_Application_Gateway
+    displayName: 'Test Deploy: Application Gateway'
+    pool:
+      vmImage: 'windows-latest'
+    environment: dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: ../../deploy/steps/application-gateway-create/create-application-gateway.yml
+            parameters:
+              applicationGatewayName: 'agtestray8723894762'
+              publicIPAddressName: 'pubagtestray8723894762' 
+              virtualNetworkName: 'vnagtestray8723894762'  
+              addressPrefix: '10.13.0.0/16' 
+              subnetPrefix: '10.13.0.0/24'
+              managementResourceGroup: $(ManagementResourceGroup) 
+              applicationGatewaySize: "WAF_Medium"
+              capacity: 2
+              wafEnabled: true
+              wafMode: "Prevention"
+              wafRuleSetType: "OWASP"
+              wafRuleSetVersion: "3.0"
+              clientPortalFqdn: 'webappray35461231cli.azurewebsites.net'
+              keyVaultName: $(keyVaultName)
+              logAnalyticsWorkspaceName: $(logAnalyticsWorkspaceName)
+              ddosProtectionPlan": ''
+              certData: $(SSLCertificateData)
+              certPw: $(SSLCertificateww)
+              resourceGroupName: 'rg-clientportal-development-ray-dev'
+              location: 'westeurope'
+              serviceConnectionName: 'Fastlane Canaries (Dev)'
+              createMode: 'arm'  # arm | cli

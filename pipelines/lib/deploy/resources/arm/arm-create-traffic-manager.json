@@ -1,0 +1,122 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+    "trafficManagerName": {
+      "type": "string",
+      "metadata": {
+        "description": ""
+      }
+	  },
+		"endpointName1": {
+			"type": "string",
+			"metadata": {
+				"description": "Name of the endpoint in the traffic Manager"
+			}
+    },
+		"endpointName2": {
+			"type": "string",
+			"metadata": {
+				"description": "Name of the endpoint in the traffic Manager"
+			}
+    },
+    "publicIpAddressName1": {
+       "type": "string",
+       "metadata": {
+            "description": "Name of the IP address"
+        }
+    },
+    "publicIpAddressName2": {
+       "type": "string",
+       "metadata": {
+            "description": "Name of the IP address"
+        }
+    },
+    "dnssuffix1": {
+       "type": "string",
+       "defaultValue": ".westeurope.cloudapp.azure.com",
+       "metadata": {
+            "description": "Suffix of DNS Name"
+        }
+    },
+    "dnssuffix2": {
+       "type": "string",
+       "defaultValue": ".northeurope.cloudapp.azure.com",
+       "metadata": {
+            "description": "Suffix of DNS Name"
+        }
+    },
+    "location1": {
+       "type": "string",
+       "defaultValue": "westeurope",
+       "metadata": {
+            "description": "Location1"
+        }
+    },
+    "location2": {
+       "type": "string",
+       "defaultValue": "northeurope",
+       "metadata": {
+            "description": "Location2"
+        }
+    }
+  },
+  "variables": {
+    "uniqueDnsName": "[parameters('trafficManagerName')]",
+    "endpointtargetresourceid1": "[concat('/subscriptions/', subscription().subscriptionId, '/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Network/publicIPAddresses/', parameters('publicIpAddressName1'))]",
+    "endpointtargetresourceid2": "[concat('/subscriptions/', subscription().subscriptionId, '/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Network/publicIPAddresses/', parameters('publicIpAddressName2'))]"
+  },
+	"resources": [
+    {
+      "apiVersion": "2018-04-01",
+      "type": "Microsoft.Network/trafficManagerProfiles",
+      "name": "[parameters('trafficManagerName')]",
+      "location": "global",
+      "scale" : null,
+      "properties": {
+        "profileStatus": "Enabled",
+        "trafficRoutingMethod": "Performance",
+        "dnsConfig": {
+          "relativeName": "[variables('uniqueDnsName')]",
+          "fqdn": "[concat(variables('uniqueDnsName'),'.trafficmanager.net')]",
+          "ttl": 60
+        },
+        "monitorConfig": {
+          "protocol": "HTTPS",
+          "port": 443,
+          "path": "/",
+          "intervalInSeconds": 30,
+          "toleratedNumberOfFailures": 3,
+          "timeoutInSeconds": 10
+        },
+        "endpoints": [
+          {
+            "name": "[parameters('endpointName1')]",
+            "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+            "properties": {
+              "endpointStatus": "Enabled",
+              "targetResourceId": "[variables('endpointtargetresourceid1')]",
+              "target": "[concat(parameters('publicIpAddressName1'), parameters('dnssuffix1'))]",
+              "weight": 1,
+              "priority": 1,
+              "endpointLocation": "[parameters('location1')]"
+            }
+          },
+          {
+            "name": "[parameters('endpointName2')]",
+            "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+            "properties": {
+              "endpointStatus": "Enabled",
+              "targetResourceId": "[variables('endpointtargetresourceid2')]",
+              "target": "[concat(parameters('publicIpAddressName2'), parameters('dnssuffix2'))]",
+              "weight": 1,
+              "priority": 2,
+              "endpointLocation": "[parameters('location2')]"
+            }
+          }
+        ],
+        "trafficViewEnrollStatus": "Enabled"
+      }
+    }
+	]
+}

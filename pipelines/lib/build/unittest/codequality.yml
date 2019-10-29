@@ -1,0 +1,41 @@
+parameters:
+  serviceConnection: ''
+  scannerMode: ''
+  mode: ''  # prepare , run
+  debug: false
+
+steps:
+  - ${{ if eq(parameters.debug, 'true') }}:
+    - script: |
+        echo SonarCloudServiceConnection: ${{ parameters.serviceConnection }}
+        echo Organization: $(sonarCloudOrganization)
+        echo ScannerMode: ${{ parameters.scannerMode }}
+        echo ConfigMode: manual
+        echo ProjectKey: $(sonarCloudProjectKey)
+        echo ProjectName: $(sonarCloudProjectName)
+        echo ExtraProperties: $(sonarCloudExtraProperties)
+      displayName: 'Display input parameters SonarCloud'
+
+  # Prepare SonarCloud Code Quality Validation
+  - ${{ if eq(parameters.mode, 'prepare') }}:
+    - ${{ if eq(parameters.scannerMode, 'CLI') }}:
+      - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+        displayName: 'Prepare analysis on SonarCloud'
+        inputs:
+          SonarCloud: ${{ parameters.serviceConnection }}
+          organization: $(sonarCloudOrganization)
+          scannerMode: CLI
+          configMode: manual
+          cliprojectKey: $(sonarCloudProjectKey)
+          cliprojectName: $(sonarCloudProjectName)
+          continueOnError: true
+
+  # Run SonarCloud Code Quality Validation
+  - ${{ if eq(parameters.mode, 'run') }}:
+    - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+      displayName: 'Run Code Analysis'
+      continueOnError: true
+
+    - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+      displayName: 'Publish Quality Gate Result'
+      continueOnError: true

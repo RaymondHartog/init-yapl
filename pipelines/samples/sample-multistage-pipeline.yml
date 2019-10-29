@@ -1,0 +1,85 @@
+trigger: none
+
+stages:
+
+# Stage: Build
+
+- stage: Build
+  displayName: 'Build'
+  variables:
+  - template: ../projects/variables/global.yml
+  - template: ../projects/variables/stage-build.yml
+
+  jobs:
+
+  # Build ResourceScripts   
+  - template: ../lib/build/build-resource-artifacts.yml
+    parameters:
+      resourceRootfolder: '$(System.DefaultWorkingDirectory)/pipelines/lib/deploy/resources'
+      checkArmtemplate: false
+      artifactName: 'resourceScripts'
+
+ # Build web-app   
+  - template: ../lib/build/webapp-build.yml
+    parameters:
+      siteName: 'sample_webapp'
+      solutionFileName: 'src/Application/SampleWebApplication.sln'
+      webRootFolder: 'src/Application/SampleWebApplication'
+      sonarCloudServiceConnection: 'SonarCloud Code Quality'
+      checkCodeQuality: false
+      runUnitTests: true
+      runCodeCoverage: false
+      uploadArtifacts: true
+      runNpmCommands: false
+      replaceTokens: false
+
+#
+# Stage: Deploy
+#
+
+# Deploy to DEV Environment
+- stage: deploy_ring0
+  displayName: 'Deploy Ring 0 (Canary)'
+  variables:
+  - template: ../projects/variables/global.yml
+  - template: ../projects/variables/stage-deploy.yml
+  #- template: ../projects/variables/<application>/stage-deploy-dev.yml
+  #- group: 'stage-deploy-dev-secrets'
+
+  jobs:
+  # Create Resource Groups
+  - template: ../lib/deploy/core/resourcegroups.yml
+    parameters:
+      resourceGroups:
+        - name: 'rg-yapl-demo-01' 
+          location: 'westeurope'
+          id: '01'
+      environment: 'ring0'
+      serviceConnectionName: 'Pipeline Demo'
+      tags: ${{ variables.tags }}
+      lockForDelete: true
+      mode: 'create'
+
+
+  # Create WebApps and Deploy WebApps
+  - template: ../lib/deploy/webapp-deploy.yml
+    parameters:
+      appServices:
+         # IRIS
+        - name: 'sample-webapp-ray-d-01'
+          location: 'westeurope'
+          resourceGroup: 'rg-yapl-demo-01'
+          resourceGroupId: '01'
+          artifact: 'sample_webapp'
+          id: '01'
+        - name: 'sample-webapp-ray-d-02'
+          location: 'northeurope'
+          resourceGroup: 'rg-yapl-demo-01'
+          resourceGroupId: '01'
+          artifact: 'sample_webapp'
+          id: '02'
+      environment: 'ring0'
+      serviceConnectionName: 'Pipeline Demo'
+      skuCode: 'S1'
+      debug: false
+      createResource: 'cli'

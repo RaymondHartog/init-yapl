@@ -1,0 +1,14 @@
+variables:
+# Azure Properties
+  tags: 'Owner=$(owner)'
+
+# Deploy Agent Settings
+  buildPoolName: 'Azure Pipelines'
+  buildPoolVmImage: 'windows-latest'
+
+# Name CI Pipeline
+  ciPipeline: current
+
+# Ring - Common
+  ApplicationInstrumentationKey: 'a617eac6-4844-488f-9e28-ae895434e8c4'
+  instrumentationKey: 'a617eac6-4844-488f-9e28-ae895434e8c4'

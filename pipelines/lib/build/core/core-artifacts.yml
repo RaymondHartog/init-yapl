@@ -1,0 +1,14 @@
+  
+parameters:
+  uploadFolder: ''
+  artifactName: ''
+  mode: ''  # upload, download
+
+steps:
+- ${{ if eq(parameters.mode, 'upload') }}:
+  - upload: ${{ parameters.uploadFolder }}
+    artifact: ${{ parameters.artifactName }}
+
+- ${{ if eq(parameters.mode, 'download') }}:
+  - download: current
+    artifact: ${{ parameters.artifactName }}

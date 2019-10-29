@@ -1,0 +1,60 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "applicationGatewayName": {
+      "value": "<variable>"
+    },
+    "publicIPAddressName": {
+        "value": "<variable>"
+    },
+    "virtualNetworkName": {
+        "value": "<variable>"
+    },
+    "addressPrefix": {
+      "value": "<variable>"
+    },
+    "subnetPrefix": {
+      "value": "<variable>"
+    },
+    "managementResourceGroup": {
+        "value": "<variable>"
+    },
+    "applicationGatewaySize": {
+      "value": "WAF_Medium"
+    },
+    "capacity": {
+      "value": 2
+    },
+    "wafEnabled": {
+      "value": true
+    },
+    "wafMode": {
+      "value": "Prevention"
+    },
+    "wafRuleSetType": {
+      "value": "OWASP"
+    },
+    "wafRuleSetVersion": {
+      "value": "3.0"
+    },
+    "clientPortalFqdn": {
+      "value": "<variable>"
+    },
+    "keyVaultName": {
+      "value": "<variable>"
+    },
+    "logAnalyticsWorkspaceName": {
+        "value": "<variable>"
+    },
+    "ddosProtectionPlan": {
+        "value": "<variable>"
+    },
+    "certData": {
+        "value": "<variable>"
+    },
+    "certPw": {
+        "value": "<variable>"
+    }
+  }
+}

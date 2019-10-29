@@ -1,0 +1,67 @@
+trigger: none # will disable CI builds entirely
+
+stages:
+- stage: Build_Resource_Artifacts
+  displayName: 'Build'
+  jobs:
+  - job: Build_Resources
+    displayName: 'Build Resource Artifact'
+    
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - template: ../../build/steps/core-artifacts.yml
+      parameters:
+        uploadFolder: '$(System.DefaultWorkingDirectory)/pipeline/lib/deploy/resources'
+        artifactName: 'resourceScripts'
+        mode: 'upload'
+
+- stage: Test_deploy_dev
+  displayName: 'Test Deploy Development'
+  dependsOn: Build_Resources
+  jobs:
+  - template: lib/deploy/core/resourcegroups.yml
+    parameters:
+      resourceGroups:
+        - name: 'rg-dev-forms-01' 
+          location: 'westeurope'
+          id: '01'
+      environment: 'dev'
+      serviceConnectionName: ${{ variables.serviceConnectionName }}
+      tags: ${{ variables.tags }}
+      lockForDelete: true
+
+  - deployment: Test_Deploy_Appservices
+    displayName: 'Test Deploy: AppService'
+    pool:
+      vmImage: 'windows-latest'
+    environment: dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - template: ../../deploy/steps/webapp-create/create-webapp.yml
+            parameters:
+              appServiceName: 'webappray35461231cli'
+              resourceGroupName: 'rg-clientportal-development-ray-dev'
+              location: 'westeurope'
+              serviceConnectionName: 'Fastlane Canaries (Dev)'
+              instrumentationKey: 'b75ec21e-6092-4ceb-9a65-13e758163d67'
+              tags: 'Owner=testOwner'
+              sku: 'S1'
+              workers: 1
+              createMode: 'cli'  # arm | cli
+
+          - template: ../../deploy/steps/webapp-create/create-webapp.yml
+            parameters:
+              appServiceName: 'webappray35461231arm'
+              resourceGroupName: 'rg-clientportal-development-ray-dev'
+              location: 'westeurope'
+              serviceConnectionName: 'Fastlane Canaries (Dev)'
+              instrumentationKey: 'b75ec21e-6092-4ceb-9a65-13e758163d67'
+              tags: 'Owner=testOwner'
+              sku: 'S1'
+              workers: 1
+              createMode: 'arm'  # arm | cli

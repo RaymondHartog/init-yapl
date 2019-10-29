@@ -1,0 +1,5 @@
+variables:
+# Global Customer Variables
+  owner: 'RaymondH'
+  costCenter: 'MAS'
+  customer: 'Macaw'

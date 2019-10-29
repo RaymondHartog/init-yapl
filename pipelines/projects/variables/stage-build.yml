@@ -1,0 +1,30 @@
+variables:
+# Build configuration
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  msbuildArgs: '/p:Configuration=Release /p:DeployOnBuild=True /p:DeployDefaultTarget=WebPublish /p:WebPublishMethod=FileSystem /p:DeleteExistingFiles=True /p:publishUrl=$(build.artifactstagingdirectory)/app'
+
+# Shared Folders
+  sharedRootfolder: 'src/Intertrust.Lib'
+
+# ITG Packages
+  packageFeedId: '884cc885-2af7-4d96-accd-d94ac9bb45a6'
+
+# Sonarcloud Configuration
+  sonarCloudOrganization: 'intertrust'
+  sonarCloudServiceConnection: 'SonarCloud Code Quality'
+  sonarCloudProjectKey: 'ClientPortal'
+  sonarCloudProjectName: 'ClientPortal'
+  sonarCloudScannerMode: 'CLI'
+  sonarCloudExtraProperties: ''
+
+# Build Agent Settings
+  buildPoolName: 'Azure Pipelines'
+  buildPoolVmImage: 'windows-latest'
+
+# Custom Build Settings
+  BUILDVERSION_TOKEN: $(Build.BuildNumber)
+  CLIENTPORTAL_BUILDVERSION: $(Build.BuildNumber)
+
+# Git Repostories
+  repoName: self #Do Not Use. Only self and none are supported. See: https://github.com/Microsoft/azure-pipelines-yaml/issues/103 and https://dev.azure.com/mseng/AzureDevOpsRoadmap/_workitems/edit/1454026

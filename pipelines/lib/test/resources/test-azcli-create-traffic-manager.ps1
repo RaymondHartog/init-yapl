@@ -1,0 +1,1 @@
+..\..\deploy\resources\azcli-create-traffic-manager.ps1 `

@@ -1,0 +1,170 @@
+parameters:
+  siteName: ''
+  solutionFilename: '' #default solution file
+  webRootFolder: ''
+  sonarCloudServiceConnection: ''
+  uploadArtifacts: true
+  checkCodeQuality: true
+  runUnitTests: true
+  runCodeCoverage: true
+  runNpmCommands: true
+  replaceTokens: true
+ 
+jobs:
+- job: Build_AppService_${{ parameters.siteName }}
+  displayName: 'build: ${{ parameters.siteName }}'
+  
+  pool:
+    Name: $(buildPoolName)
+    vmImage: $(buildPoolVmImage)
+  
+  steps:
+# Install and Install All Nuget Packages
+  - task: NuGetToolInstaller@1
+    displayName: 'NuGet Install'
+    inputs:
+      versionSpec: '>=4.0.0-0'
+      checkLatest: true
+
+  - task: NuGetCommand@2
+    displayName: 'NuGet restore'
+    inputs:
+      command: 'restore'
+      restoreSolution: ${{ parameters.solutionFilename }}
+      feedsToUse: 'select'
+      vstsFeed: $(packageFeedId)
+
+  - ${{ if eq(parameters.replaceTokens, 'true') }}:
+# Replace Tokens in config files
+    - task: replacetokens@3
+      displayName: 'Replace tokens in .env.production'
+      inputs:
+        rootDirectory: ${{ parameters.webRootFolder }}/${{ parameters.siteName }}
+        targetFiles: '.env.production'
+        encoding: 'auto'
+        writeBOM: true
+        escapeType: 'none'
+        actionOnMissing: 'warn'
+        keepToken: true
+        tokenPrefix: '##'
+        tokenSuffix: '##'
+
+    - task: replacetokens@3
+      displayName: 'Replace tokens in appsettings.json'
+      inputs:
+        rootDirectory: ${{ parameters.webRootFolder }}
+        targetFiles: 'appsettings.json'
+        encoding: 'auto'
+        writeBOM: true
+        escapeType: 'none'
+        actionOnMissing: 'warn'
+        keepToken: false
+        tokenPrefix: '#{'
+        tokenSuffix: '}#'
+
+  - ${{ if eq(parameters.runNpmCommands, 'true') }}:
+# Run custom npm commands
+    - task: Npm@1
+      displayName: 'lerna bootstrap'
+      inputs:
+        command: 'custom'
+        workingDir: ${{ parameters.webRootFolder }}/${{ parameters.siteName }}
+        customCommand: 'run bootstrap'
+
+    - task: Npm@1
+      displayName: '(UI components) npm lint'
+      inputs:
+        command: 'custom'
+        workingDir: $(sharedRootfolder)
+        customCommand: 'run lint'
+
+    - task: Npm@1
+      displayName: '(UI components) npm run transpile'
+      inputs:
+        command: 'custom'
+        workingDir: $(sharedRootfolder)
+        customCommand: 'run transpile'
+
+    - task: Npm@1
+      displayName: 'npm run lint'
+      inputs:
+        command: 'custom'
+        workingDir: ${{ parameters.webRootFolder }}/${{ parameters.siteName }}
+        customCommand: 'run lint'
+
+# Prepare SonarCloud Code Quality Validation
+  - ${{ if eq(parameters.checkCodeQuality, 'true') }}:
+    - template: test/codequality.yml
+      parameters:
+        serviceConnection: ${{ parameters.sonarCloudServiceConnection }}
+        scannerMode: $(sonarCloudScannerMode)
+        mode: 'prepare'
+        debug: true
+
+# Build the Solution
+  - task: VSBuild@1
+    displayName: 'Build solution'
+    inputs:
+      solution: ${{ parameters.solutionFilename }}
+      msbuildArgs: $(msbuildArgs)
+      platform: $(buildPlatform)
+      configuration: $(buildConfiguration)
+
+# Run Unittests and Publish the results
+  - ${{ if eq(parameters.runUnitTests, 'true') }}:
+    - task: VSTest@2
+      inputs:
+        displayName: 'Test Assemblies'
+        testSelector: 'testAssemblies'
+        testAssemblyVer2: |
+          **\*unittest*.dll
+          !**\*TestAdapter.dll
+          !**\obj\**
+        searchFolder: '$(System.DefaultWorkingDirectory)'
+        testRunTitle: 'Unittest'
+        platform: 'Any CPU'
+        configuration: 'debug'
+        diagnosticsEnabled: true
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results **/test/junit.xml'
+      inputs:
+        testResultsFiles: '**/test/junit.xml'
+
+# Run and Report Unitest Code Coverage
+    - ${{ if eq(parameters.runCodeCoverage, 'true') }}:
+      - task: Npm@1
+        displayName: 'npm run test -- --coverage'
+        inputs:
+          command: 'custom'
+          workingDir: ${{ parameters.webRootFolder }}
+          customCommand: 'run test -- --coverage'
+
+      - task: PowerShell@2
+        displayName: 'Analyze CodeCoverage Reports'
+        inputs:
+          targetType: 'inline'
+          script: |
+            Get-ChildItem -Recurse -Filter "*.coverage" | % {  
+            $outfile = "$([System.IO.Path]::GetFileNameWithoutExtension($_.FullName)).coverage"  
+            $output = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($_.FullName), $outfile)  
+            "Analyse '$($_.Name)' with output '$outfile'..."  
+            . $env:USERPROFILE\.nuget\packages\microsoft.codecoverage\16.0.1\build\netstandard1.0\CodeCoverage\CodeCoverage.exe analyze /output:$output $_.FullName  
+            }  
+            "Done"
+          workingDirectory: '$(Agent.TempDirectory)'
+
+# Run SonarCloud Code Quality Validation
+  - ${{ if eq(parameters.checkCodeQuality, 'true') }}:
+    - template: test/codequality.yml
+      parameters:
+        mode: 'run'
+
+# Upload Build Artifacts
+# upload -> YAML Pipelines
+  - ${{ if eq(parameters.uploadArtifacts, 'true') }}:
+    - template: core/core-artifacts.yml
+      parameters:
+        uploadFolder: '$(build.artifactstagingdirectory)/app'
+        artifactName: '${{ parameters.siteName }}'
+        mode: 'upload'

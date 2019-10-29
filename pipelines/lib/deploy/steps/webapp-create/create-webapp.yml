@@ -1,0 +1,43 @@
+parameters:
+  appServiceName: ''
+  resourceGroupName: ''
+  location: 'westeurope'
+  serviceConnectionName: ''
+  instrumentationKey: ''
+  tags: ''
+  sku: 'S1'
+  workers: 1
+  createMode: 'cli'  # arm | cli
+
+steps:
+
+- download: current
+  artifact: resourceScripts
+
+- ${{ if eq(parameters.createMode, 'cli') }}:
+  - task: AzureCLI@2
+    displayName: 'Azure AzCli  Deployment: Create Or Update AppServices: ${{ parameters.AppServiceName }}'
+    inputs:
+      azureSubscription: ${{ parameters.serviceConnectionName }}
+      scriptType: 'ps'
+      scriptLocation: 'scriptPath'
+      scriptPath: '$(Pipeline.Workspace)/resourceScripts/azcli/azcli-create-webapp.ps1'
+      arguments: '-ResourceGroupName ${{ parameters.resourceGroupName }} -appServiceName ${{ parameters.appServiceName }} -location ${{ parameters.location }} -instrumentationKey ${{ parameters.instrumentationKey }} -resourceTags ${{ parameters.tags }} -sku ${{ parameters.sku }} -workers ${{ parameters.workers }}'
+      addSpnToEnvironment: true
+      useGlobalConfig: true
+      failOnStandardError: true
+
+- ${{ if eq(parameters.createMode, 'arm') }}:
+  - task: AzureResourceGroupDeployment@2
+    displayName: 'Azure ARM Deployment: Create Or Update AppServices: ${{ parameters.AppServiceName }}'
+    inputs:
+      azureSubscription: ${{ parameters.serviceConnectionName }}
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: ${{ parameters.resourceGroupName }}
+      location: ${{ parameters.location }}
+      templateLocation: 'Linked artifact'
+      csmFile: '$(Pipeline.Workspace)/resourceScripts/arm/arm-create-webapp.json'
+      csmParametersFile: '$(Pipeline.Workspace)/resourceScripts/arm/arm-create-webapp.Parameters.json'
+      overrideParameters: '-webAppName ${{ parameters.appServiceName }} -location ${{ parameters.location }} -instrumentationKey ${{ parameters.instrumentationKey }} -skuCode ${{ parameters.sku }}'
+      deploymentMode: 'Incremental'
+      deploymentName: '${{ parameters.appServiceName }}-${{ parameters.location }}'

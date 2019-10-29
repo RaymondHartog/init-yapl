@@ -1,0 +1,1 @@
+This folder will contains all sample (multistage) YAML Pipeline

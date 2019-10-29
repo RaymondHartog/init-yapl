@@ -1,0 +1,21 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "trafficManagerName" : {
+        "Value": "tmtestray625472"
+      },
+      "endpointName1": {
+        "value": "webappray35461231arm"
+      },
+      "endpointName2": {
+        "value": "webappray35461231cli"
+      },
+      "publicIPAddressName1": {
+          "value": "pubagtestray8723894762"
+      },
+      "publicIpAddressName2": {
+          "value": "<variable>"
+      }
+    }
+  }

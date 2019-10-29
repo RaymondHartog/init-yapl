@@ -1,0 +1,24 @@
+parameters:
+  resourceRootfolder: '$(System.DefaultWorkingDirectory)/pipeline/lib/deploy/resources'
+  checkArmtemplate: true
+  artifactName: 'resourceScripts'
+
+jobs:
+- job: Build_deploy_artifacts
+  displayName: 'build resourcescripts'
+  pool:
+    Name: $(buildPoolName)
+    vmImage: $(buildPoolVmImage)
+
+  steps:
+  - ${{ if eq(parameters.checkArmtemplate, 'true') }}:
+    - task: AzSKARMTemplateChecker@4
+      inputs:
+        ARMTemplateFilePath: ${{ parameters.resourceRootfolder }}/arm
+        ARMTemplateParameterFilePath: ${{ parameters.resourceRootfolder }}/arm
+
+  - template: core/core-artifacts.yml
+    parameters:
+      uploadFolder: ${{ parameters.resourceRootfolder }}
+      artifactName: ${{ parameters.artifactName }}
+      mode: 'upload'

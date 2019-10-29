@@ -1,0 +1,60 @@
+trigger: none # will disable CI builds   entirely 
+
+stages:
+- stage: Build_Resource_Artifacts
+  displayName: 'Build'
+  jobs:
+  - job: Build_Resources
+    displayName: 'Build Resource Artifact'
+    
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - template: ../../build/steps/core-artifacts.yml
+      parameters:
+        uploadFolder: '$(System.DefaultWorkingDirectory)/pipeline/lib/deploy/resources'
+        artifactName: 'resourceScripts'
+        mode: 'upload'
+
+- stage: Test_create_rg_dev
+  displayName: 'Test Create Resource Groups'
+  dependsOn: Build_Resource_Artifacts
+  variables:
+    - template: ../../../variables/global.yml
+    - template: ../../../variables/stage-deploy.yml
+  jobs:
+  - template: ../../deploy/core/resourcegroups.yml
+    parameters:
+      resourceGroups:
+        - name: 'rg-dev-forms-01' 
+          location: 'westeurope'
+          id: '01'
+        - name: 'rg-dev-forms-02' 
+          location: 'northeurope'
+          id: '02'
+      environment: 'dev'
+      serviceConnectionName: 'Fastlane Canaries (Dev)'
+      lockForDelete: true
+      mode: 'create'
+
+- stage: Test_delete_rg_dev
+  displayName: 'Test Delete Resource Groups'
+  dependsOn: Build_Resource_Artifacts
+  variables:
+    - template: ../../../variables/global.yml
+    - template: ../../../variables/stage-deploy.yml
+  jobs:
+  - template: ../../deploy/core/resourcegroups.yml
+    parameters:
+      resourceGroups:
+        - name: 'rg-dev-forms-01' 
+          location: 'westeurope'
+          id: '03'
+        - name: 'rg-dev-forms-02' 
+          location: 'northeurope'
+          id: '04'
+      environment: 'dev'
+      serviceConnectionName: 'Fastlane Canaries (Dev)'
+      lockForDelete: true
+      mode: 'delete'

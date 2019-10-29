@@ -1,0 +1,35 @@
+  
+parameters:
+  resourceGroups: []
+  environment: ''
+  serviceConnectionName: ''
+  lockForDelete: true
+  mode: 'create' # create | delete
+  ciPipeline: 'current'
+
+jobs:
+  - ${{ each resourceGroup in parameters.resourceGroups }}:
+    - deployment: ResourceGroups_${{ resourceGroup.id }}
+      displayName: '${{ parameters.mode }} resource group: ${{ resourceGroup.name }}'
+      pool:
+        vmImage: 'windows-latest'
+      environment: ${{ parameters.environment }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+            # Download 
+            - download: ${{ parameters.ciPipeline }}
+              artifact: 'resourceScripts'
+
+            # Create only Resource Group
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                scriptType: 'pscore'
+                scriptLocation: 'scriptPath'
+                scriptPath: $(Pipeline.Workspace)/resourceScripts/azcli/azcli-core-resource-group.ps1
+                arguments: -resourceGroupName ${{ resourceGroup.name }} -location ${{ resourceGroup.location }} -resourceTags $(tags) -lockForDelete ${{ parameters.lockForDelete }} -mode ${{ parameters.mode }}
+                addSpnToEnvironment: true
+                useGlobalConfig: true

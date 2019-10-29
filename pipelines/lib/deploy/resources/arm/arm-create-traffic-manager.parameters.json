@@ -1,0 +1,21 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "trafficManagerName" : {
+      "Value": "<variable>"
+    },
+    "endpointName1": {
+      "value": "<variable>"
+    },
+    "endpointName2": {
+      "value": "<variable>"
+    },
+    "publicIPAddressName1": {
+        "value": "<variable>"
+    },
+    "publicIpAddressName2": {
+        "value": "<variable>"
+    }
+  }
+}

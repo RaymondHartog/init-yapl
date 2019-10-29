@@ -1,0 +1,100 @@
+parameters:
+  appServices: []
+  environment: ''
+  serviceConnectionName: ''
+  skuCode: 'S1'
+  debug: false
+  createResource: 'arm'
+  ciPipeline: 'current'
+
+jobs:
+  - ${{ each appService in parameters.appServices }}:
+    - deployment: Deploy_Appservices_${{ appService.id }}
+      displayName: 'deploy appservice: ${{ appService.name }}'
+      dependsOn: ResourceGroups_${{ appService.resourceGroupId }}
+      pool:
+        vmImage: 'windows-latest'
+        #name: 'Self Hosted'
+      environment: ${{ parameters.environment }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+            - template: steps/webapp-create/create-webapp.yml
+              parameters:
+                appServiceName: ${{ appService.name }}
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                location: ${{ appService.location }}
+                serviceConnectionName: ${{ parameters.serviceConnectionName }}
+                instrumentationKey: $(instrumentationKey)
+                tags: $(tags)
+                sku: 'S1'
+                workers: 1
+                createMode: 'cli'
+
+            - download: ${{ parameters.ciPipeline }}
+              artifact: ${{ appService.artifact }}
+
+            - task: replacetokens@3
+              displayName: 'Replace Tokens'
+              inputs:
+                rootDirectory: '$(Pipeline.Workspace)/${{ appService.artifact }}/${{ appService.artifact }}/build'
+                targetFiles: 'index.html'
+                encoding: 'auto'
+                writeBOM: true
+                escapeType: 'none'
+                actionOnMissing: 'warn'
+                keepToken: false
+                tokenPrefix: '##'
+                tokenSuffix: '##'
+
+            - task: AzureAppServiceManage@0
+              displayName: 'Stop Azure App Service (Stage)'
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                Action: 'Stop Azure App Service'
+                WebAppName: ${{ appService.name }}
+                SpecifySlotOrASE: true
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                Slot: 'staging'
+
+            - task: AzureRmWebAppDeployment@4
+              inputs:
+                ConnectionType: 'AzureRM'
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                appType: 'webApp'
+                WebAppName: ${{ appService.name }}
+                deployToSlotOrASE: true
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                SlotName: 'staging'
+                packageForLinux: '$(Pipeline.Workspace)/${{ appService.artifact }}'
+                JSONFiles: '**\appsettings.json'
+
+            - task: AzureAppServiceManage@0
+              displayName: 'Start Azure App Service (Stage)'
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                Action: 'Start Azure App Service'
+                WebAppName: ${{ appService.name }}
+                SpecifySlotOrASE: true
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                Slot: 'staging'
+
+            - task: AzureAppServiceManage@0
+              displayName: 'Start Azure App Service (Production)'
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                Action: 'Start Azure App Service'
+                WebAppName: ${{ appService.name }}
+                SpecifySlotOrASE: true
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                Slot: 'production'
+    #Add Approval
+            - task: AzureAppServiceManage@0
+              inputs:
+                azureSubscription: ${{ parameters.serviceConnectionName }}
+                Action: 'Swap Slots'
+                WebAppName: ${{ appService.name }}
+                ResourceGroupName: ${{ appService.resourceGroup }}
+                SourceSlot: 'staging'
