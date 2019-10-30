@@ -1,1 +1,1 @@
-# init-yapl
+# init-yapl-demo
